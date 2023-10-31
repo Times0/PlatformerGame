@@ -127,7 +127,7 @@ class Game:
 
     def show_game_over(self, current_level, win=False, nb_coin=0):
         # Create a black filter screen, stop music, and set the game state based on win or lose
-        black_filter = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+        black_filter = pygame.Surface((WIDTH, HEIGHT))
         black_filter.fill((0, 0, 0))
         black_filter.set_alpha(200)
         self.win.blit(black_filter, (0, 0))

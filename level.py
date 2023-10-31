@@ -248,7 +248,7 @@ class Level:
             self.show_gameover(self.current_level, win=True, nb_coin=self.nb_coins)
 
     def check_player_death(self):
-        if self.player.rect.top > WINDOW_HEIGHT:
+        if self.player.rect.top > HEIGHT:
             self.show_gameover(self.current_level)
 
     def reset_player(self):
@@ -275,7 +275,7 @@ class Level:
         # Place the player in the center of the screen
 
         # Calculate the offset between the center of the screen and the player
-        offset = round(WINDOW_WIDTH / 2 - self.player.rect.centerx)
+        offset = round(WIDTH / 2 - self.player.rect.centerx)
 
         # Move the player
         self.player.rect.centerx += offset
@@ -291,7 +291,7 @@ class Level:
         # Indicator to avoid moving the player if we are moving all other objects
         self.scroll = False
 
-        if self.player.rect.right > WINDOW_WIDTH / 2:  # If the player is on the right side of the screen
+        if self.player.rect.right > WIDTH / 2:  # If the player is on the right side of the screen
             if self.player.horizontal_movement > 0:  # If the player is moving to the right
 
                 # Move all sprites to the left
@@ -301,7 +301,7 @@ class Level:
                         sprite.rect.x -= offset
                         self.scroll = True
 
-        elif self.player.rect.left < WINDOW_WIDTH / 4:  # If the player is on the left side of the screen
+        elif self.player.rect.left < WIDTH / 4:  # If the player is on the left side of the screen
             if self.player.horizontal_movement < 0:  # If the player is moving to the left
 
                 # Move all sprites to the left

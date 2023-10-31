@@ -37,7 +37,7 @@ class Menu:
         self.font = pygame.font.Font(os.path.join(font_path), 50)
         title = 'Select a level:'
         self.title_image = self.font.render(title, False, (0, 0, 0))
-        self.title_rect = self.title_image.get_rect(centerx=WINDOW_WIDTH / 2, y=50)
+        self.title_rect = self.title_image.get_rect(centerx=WIDTH / 2, y=50)
 
         # Store level data.
         self.data = data

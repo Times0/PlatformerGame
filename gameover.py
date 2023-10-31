@@ -1,7 +1,7 @@
 # Import necessary libraries
 import pygame
 from ui import Button  # Import the Button class from the 'ui' module
-from constants import *  # Import constant values like WINDOW_WIDTH and WINDOW_HEIGHT
+from constants import *  # Import constant values like WINDOW_WIDTH and HEIGHT
 import os
 
 
@@ -83,19 +83,19 @@ class DefeatScreen(Gameover):
         self.title = 'Game Over'  # Set the title text
         red = (255, 0, 0)  # Red color for the title
         self.title_image = self.font.render(self.title, False, red)  # Render the title text
-        self.title_rect = self.title_image.get_rect(centerx=WINDOW_WIDTH / 2, y=50)  # Position the title text
+        self.title_rect = self.title_image.get_rect(centerx=WIDTH / 2, y=50)  # Position the title text
 
         # Create restart button
         button_width = 450
         button_height = 100
-        button_x = (WINDOW_WIDTH - button_width) / 2
-        button_y = WINDOW_HEIGHT / 2 - button_height
+        button_x = (WIDTH - button_width) / 2
+        button_y = HEIGHT / 2 - button_height
         self.restart_btn = Button(button_x, button_y, text='Restart', width=button_width, height=button_height,
                                   click=self.create_level)
 
         # Create return to menu button
-        button_x = (WINDOW_WIDTH - button_width) / 2
-        button_y = WINDOW_HEIGHT / 2 + button_height / 2
+        button_x = (WIDTH - button_width) / 2
+        button_y = HEIGHT / 2 + button_height / 2
         self.menu_btn = Button(button_x, button_y, text='Back to menu', width=button_width, height=button_height,
                                click=self.show_menu)
 
@@ -117,25 +117,25 @@ class VictoryScreen(Gameover):
         self.title = 'You win!'  # Set the title text
         green = (0, 255, 0)  # Green color for the title
         self.title_image = self.font.render(self.title, False, green)  # Render the title text
-        self.title_rect = self.title_image.get_rect(centerx=WINDOW_WIDTH / 2, y=50)  # Position the title text
+        self.title_rect = self.title_image.get_rect(centerx=WIDTH / 2, y=50)  # Position the title text
 
         # Create next level button
         button_width = 450
         button_height = 100
-        button_x = (WINDOW_WIDTH - button_width) / 2
-        button_y = WINDOW_HEIGHT / 2 - 2 * button_height
+        button_x = (WIDTH - button_width) / 2
+        button_y = HEIGHT / 2 - 2 * button_height
         self.next_level_btn = Button(button_x, button_y, text='Next level', width=button_width, height=button_height,
                                      click=self.next_level)
 
         # Create restart button
-        button_x = (WINDOW_WIDTH - button_width) / 2
-        button_y = (WINDOW_HEIGHT - button_height) / 2
+        button_x = (WIDTH - button_width) / 2
+        button_y = (HEIGHT - button_height) / 2
         self.restart_btn = Button(button_x, button_y, text='Restart', width=button_width, height=button_height,
                                   click=self.create_level)
 
         # Create return to menu button
-        button_x = (WINDOW_WIDTH - button_width) / 2
-        button_y = WINDOW_HEIGHT / 2 + button_height
+        button_x = (WIDTH - button_width) / 2
+        button_y = HEIGHT / 2 + button_height
         self.menu_btn = Button(button_x, button_y, text='Back to menu', width=button_width, height=button_height,
                                click=self.show_menu)
 

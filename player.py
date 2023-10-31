@@ -11,7 +11,7 @@ class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
 
-        # Caractéristiques principales du joueur
+        # Player's main characteristics
         self.lives = 3
         self.current_lives = self.lives
         self.width = 49
@@ -26,13 +26,13 @@ class Player(pygame.sprite.Sprite):
 
         self.rect = pygame.rect.Rect(0, 0, self.width, self.height)
 
-        # Utilitaires
+        # Utilities
         self.vertical_movement = 0
         self.horizontal_movement = 0
         self.on_ground = True
         self.facing_right = True
 
-        # Chargement des sprites du joueur
+        # Loading player's animation sprites
         self.status = 'idle'
         self.animation_sprites = {'idle': [], 'jump': [], 'run': []}
         self.resize_factor = self.width / 14
@@ -41,7 +41,7 @@ class Player(pygame.sprite.Sprite):
         self.load_sprites()
         self.image = self.animation_sprites[self.status][self.frame_index]
 
-        # SFX
+        # Sound Effects (SFX)
         self.jump_sfx = pygame.mixer.Sound('assets/sounds/Jump.wav')
         self.jump_sfx.set_volume(SFX_VOLUME)
 
@@ -50,7 +50,7 @@ class Player(pygame.sprite.Sprite):
         self.hurt_sfx.set_volume(hurt_volume)
 
     def load_sprites(self):
-        # Fonction qui récupère les images d'animation du joueur dans la sprite sheet
+        # Function to retrieve player's animation images from the sprite sheet
 
         sprite_sheet_path = 'assets/animations/Hero.png'
         sprite_sheet = pygame.image.load(sprite_sheet_path).convert_alpha()
@@ -58,7 +58,7 @@ class Player(pygame.sprite.Sprite):
             self.resize_factor))
 
         for key in self.animation_sprites:
-            # On récupère les coordonnées sur la sprite sheet de chaque type d'animation
+            # Retrieve the coordinates on the sprite sheet for each type of animation
             if key == 'idle':
                 y = 20
                 nb_sprite = 8
@@ -79,24 +79,24 @@ class Player(pygame.sprite.Sprite):
                 self.animation_sprites[key].append(surface)
 
     def animate(self, dt):
-        # Fonction qui gère l'image du joueur à afficher selon l'état du joueur et la progression de l'animation
+        # Function to handle the player's image to display based on the player's state and animation progress
 
-        # état du joueur :
+        # Player's state:
         current_animation = self.animation_sprites[self.status]
 
-        # boucle d'animation (index de progression de l'animation)
+        # Animation loop (index for animation progression)
         self.frame_index += self.animation_speed * dt
         if self.frame_index >= len(current_animation):
             self.frame_index = 0
 
-        # récupération de l'image de l'animation
+        # Get the image for the animation
         image = current_animation[floor(self.frame_index)]
 
-        # Inversion de l'image selon la direction dans laquelle regarde le joueur
+        # Flip the image based on the player's direction
         if not self.facing_right:
             image = pygame.transform.flip(image, True, False).convert_alpha()
 
-        # Clignotement lorsque le joueur est invincible
+        # Blink when the player is invincible
         if self.invincible:
             alpha = randint(0, 255)
             image.set_alpha(alpha)
@@ -106,12 +106,12 @@ class Player(pygame.sprite.Sprite):
         self.image = image
 
     def get_inputs(self):
-        # Fonction qui gère les actions du joueur
+        # Function to handle player's actions
 
-        # Réinitialisation de la vitesse horizontale
+        # Reset horizontal speed
         self.horizontal_movement = 0
 
-        # d'abord les actions du clavier
+        # Keyboard actions
         keys = pygame.key.get_pressed()
 
         if keys[pygame.K_RIGHT] or keys[pygame.K_a]:
@@ -123,11 +123,11 @@ class Player(pygame.sprite.Sprite):
             self.facing_right = False
 
         if keys[pygame.K_SPACE]:
-            if self.on_ground:  # s'il est sur le sol
+            if self.on_ground:
                 self.jump()
 
     def get_status(self):
-        # Fonction qui change l'état du joueur pour les animations (immobile, en train de courir, de sauter...)
+        # Function to change the player's state for animations (idle, running, jumping...)
 
         if self.on_ground:
             if self.horizontal_movement == 0:
@@ -138,14 +138,14 @@ class Player(pygame.sprite.Sprite):
             self.status = 'jump'
 
     def jump(self):
-        # Fonction qui fait sauter le joueur
+        # Function to make the player jump
 
         self.vertical_movement -= self.jump_power
         self.on_ground = False
         self.jump_sfx.play()
 
     def apply_gravity(self, dt):
-        # Fonction qui ajoute la gravité à la vitesse verticale du joueur
+        # Function to add gravity to the player's vertical speed
         if not self.first_run:
             self.vertical_movement += self.gravity * dt
         else:
@@ -153,7 +153,7 @@ class Player(pygame.sprite.Sprite):
             self.first_run = False
 
     def check_invincibility(self):
-        # vérifie le timer d'invincibilité
+        # Check the invincibility timer
 
         if self.invincible:
             now = pygame.time.get_ticks()
@@ -161,26 +161,22 @@ class Player(pygame.sprite.Sprite):
                 self.invincible = False
 
     def take_damage(self):
-
-        # Rend le joueur invincible pendant un certain temps
+        # Make the player invincible for a certain period of time
         self.invincible = True
         self.invincibility_timer = pygame.time.get_ticks()
-
         self.hurt_sfx.play()
-
-        # une vie en moins
         self.current_lives -= 1
 
     def update(self, dt):
-        # Actualisation du joueur
+        # Update the player
         self.get_inputs()
         self.apply_gravity(dt)
         self.check_invincibility()
         self.get_status()
         self.animate(dt)
 
-        # Les collisions se font dans la classe Level pour avoir accès aux blocs du terrain
+        # Collisions are handled in the Level class to have access to the terrain blocks
 
     def draw(self, win):
-        # Dessin du joueur
+        # Draw the player
         win.blit(self.image, self.rect)
