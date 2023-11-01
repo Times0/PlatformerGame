@@ -1,3 +1,5 @@
+import time
+
 import pygame
 from ui import Button
 import os
@@ -95,6 +97,7 @@ class Menu:
                 for button in self.buttons:
                     if button.on_mouse_clicked(event):
                         self.create_level(int(button.text))
+
 
             elif event.type == pygame.MOUSEMOTION:
                 # Change the button's color when the mouse hovers over it.

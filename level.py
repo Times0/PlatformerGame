@@ -157,8 +157,8 @@ class Level:
                 self.player.rect.left = tile.rect.right
 
     def vertical_collision(self, dt):
-
         # Apply the player's vertical movement:
+
         y_offset = self.player.vertical_movement * dt
         self.player.rect.y += y_offset
 
