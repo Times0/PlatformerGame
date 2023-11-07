@@ -1,4 +1,5 @@
 # Import necessary modules and classes
+import enum
 import time
 
 import pygame.sprite
@@ -14,6 +15,13 @@ from player import Player
 
 # Define the path to the data file
 DATA_PATH = 'data/data.json'
+
+
+class GameState(enum.Enum):
+    MENU = 0
+    LEVEL = 1
+    WIN = 2
+    LOSE = 3
 
 
 # Define the Game class
@@ -42,7 +50,7 @@ class Game:
         self.menu = Menu(self.max_level, 1, self.create_level, data)
         self.menu_music.play(loops=-1)
         self.level = None
-        self.game_state = 'menu'
+        self.game_state = GameState.MENU
 
         # Gameover screens
         self.win_screen = VictoryScreen(self.create_level, self.show_menu, self.next_level)
@@ -55,12 +63,13 @@ class Game:
         self.menu_music.stop()
         self.level_music.play(loops=-1)
         self.level = Level(current_level, self.show_menu, self.show_game_over)
-        self.game_state = 'level'
+        self.game_state = GameState.LEVEL
 
     def run(self):
         clock = pygame.time.Clock()
         while self.game_is_on:
             dt = clock.tick(FPS) / 1000  # Calculate time passed since the last frame
+            print(f"FPS: {clock.get_fps()}")
             dt = min(dt, 0.1)  # Cap the maximum time passed to 0.1 seconds to avoid crash with slow pc
             self.handle_events()  # Handle game events
             self.update(dt)  # Update the game state
@@ -72,48 +81,32 @@ class Game:
             if event.type == QUIT:
                 self.game_is_on = False
 
-        # Delegate event handling based on the game state
-        if self.game_state == 'level':
+        # Delegate handling events based on the game state
+        if self.game_state == GameState.LEVEL:
             self.level.handle_events(events)
-        elif self.game_state == 'menu':
+        elif self.game_state == GameState.MENU:
             self.menu.handle_events(events)
-        elif self.game_state == 'win':
+        elif self.game_state == GameState.WIN:
             self.win_screen.handle_events(events)
-        elif self.game_state == 'lose':
+        elif self.game_state == GameState.LOSE:
             self.lose_screen.handle_events(events)
-        else:
-            print(self.game_state)
-            exit(1)
 
     def update(self, dt):
         # Delegate updating based on the game state
-        if self.game_state == 'level':
+        if self.game_state == GameState.LEVEL:
             self.level.update(dt)
-        elif self.game_state == 'menu':
-            pass
-        elif self.game_state == 'win':
-            pass
-        elif self.game_state == 'lose':
-            pass
-        else:
-            print(self.game_state)
-            exit(1)
 
     def draw(self, win):
         # Draw the game on the window based on the game state
-        if self.game_state == 'level':
-            self.level.draw(win)
-        elif self.game_state == 'menu':
-            self.menu.draw(win)
-        elif self.game_state == 'win':
-            self.win_screen.draw(win)
-        elif self.game_state == 'lose':
-            self.lose_screen.draw(win)
-        else:
-            print(self.game_state)
-            exit(1)
 
-        pygame.display.update()  # Update the window to show the changes
+        if self.game_state == GameState.LEVEL:
+            self.level.draw(win)
+        elif self.game_state == GameState.MENU:
+            self.menu.draw(win)
+        elif self.game_state == GameState.WIN:
+            self.win_screen.draw(win)
+        elif self.game_state == GameState.LOSE:
+            self.lose_screen.draw(win)
 
     def show_menu(self, current_level):
         # Stop music, set the menu to the current level, and play menu music
@@ -126,7 +119,7 @@ class Game:
         self.menu.buttons[current_level - 1].select()
         self.level_music.stop()
         self.menu_music.play(loops=-1)
-        self.game_state = 'menu'
+        self.game_state = GameState.MENU
 
     def show_game_over(self, current_level, win=False, nb_coin=0):
         # Create a black filter screen, stop music, and set the game state based on win or lose
@@ -139,7 +132,7 @@ class Game:
         self.level_music.stop()
 
         if win:
-            self.game_state = 'win'
+            self.game_state = GameState.WIN
             self.win_music.play()
             if update_player_data(DATA_PATH, current_level, nb_coin):
                 self.menu.update_nb_coins(current_level, nb_coin)
@@ -149,7 +142,7 @@ class Game:
             self.win_screen.button_selected = 0
             self.win_screen.current_level = current_level
         else:
-            self.game_state = 'lose'
+            self.game_state = GameState.LOSE
             self.death_music.play()
             for button in self.lose_screen.buttons:
                 button.unselect()

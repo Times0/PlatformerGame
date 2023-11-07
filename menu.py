@@ -26,7 +26,7 @@ class Menu:
         background_path = 'assets/ui/background.png'
         self.background = pygame.image.load(os.path.join(background_path))
         self.background = pygame.transform.scale_by(self.background, 1200 / 1056)
-        self.background.set_alpha(100)
+        self.background = self.background.convert()
 
         # Load and configure assets for coins.
         font_path = 'assets/ui/Retro Gaming.ttf'
@@ -34,6 +34,7 @@ class Menu:
         coin_path = 'assets/ui/coin_icon.png'
         self.coin_image = pygame.image.load(os.path.join(coin_path))
         self.coin_image = pygame.transform.scale(self.coin_image, (TILE_SIZE, TILE_SIZE))
+        self.coin_image = self.coin_image.convert_alpha()
 
         # Create the title for the menu.
         self.font = pygame.font.Font(os.path.join(font_path), 50)
@@ -98,7 +99,6 @@ class Menu:
                     if button.on_mouse_clicked(event):
                         self.create_level(int(button.text))
 
-
             elif event.type == pygame.MOUSEMOTION:
                 # Change the button's color when the mouse hovers over it.
                 for button in self.buttons:
@@ -125,7 +125,6 @@ class Menu:
 
                 elif event.key == pygame.K_SPACE:
                     # Start the currently selected level when the space key is pressed.
-
                     self.create_level(self.current_level)
 
             elif event.type == pygame.JOYBUTTONDOWN:
@@ -136,12 +135,10 @@ class Menu:
 
     def draw(self, win):
         # Draw the menu on the game window.
-
         win.blit(self.background, (0, 0))
         win.blit(self.title_image, self.title_rect)
         for index, button in enumerate(self.buttons):
             button.draw(win)
-
             coin_surface = self.coins_info[index]
             pos = (button.x, button.y)
             win.blit(coin_surface, pos)

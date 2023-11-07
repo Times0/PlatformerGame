@@ -358,3 +358,5 @@ class Level:
                      nb_goomba=self.nb_goomba,
                      nb_bee=self.nb_bee,
                      health=self.player.current_lives)
+
+        pygame.display.flip()
