@@ -189,8 +189,13 @@ class Level:
         if collision:
             for coin in collision:
                 self.nb_coins += 1
-                coin.kill()
                 self.coin_sfx.play()
+                coin.kill()
+
+                # MODIFIED HERE
+                if self.nb_coins == COIN_REQUIRED:
+                    self.draw(self.win)  # Draw the whole level again to show the x/x coins and not x-1/x coins
+                    self.show_gameover(self.current_level, win=True, nb_coin=self.nb_coins)
 
     def check_enemy_collision(self):
         # Function to check enemy collisions with their boundaries and the player
@@ -342,6 +347,7 @@ class Level:
         self.check_player_death()
 
     def draw(self, win):
+        self.win = win
         win.fill((51, 165, 255))  # Fill the window with a blue background
 
         self.background.draw(win)

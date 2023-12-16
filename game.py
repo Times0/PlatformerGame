@@ -69,7 +69,6 @@ class Game:
         clock = pygame.time.Clock()
         while self.game_is_on:
             dt = clock.tick(FPS) / 1000  # Calculate time passed since the last frame
-            print(f"FPS: {clock.get_fps()}")
             dt = min(dt, 0.1)  # Cap the maximum time passed to 0.1 seconds to avoid crash with slow pc
             self.handle_events()  # Handle game events
             self.update(dt)  # Update the game state
