@@ -10,6 +10,7 @@ from tile import Tile, AnimatedTile
 from ui import LevelUI
 
 
+
 class Level:
     def __init__(self, current_level, show_menu, show_gameover):
         self.current_level: int = current_level
@@ -36,6 +37,8 @@ class Level:
         coin_volume = 2 * SFX_VOLUME
         self.coin_sfx = pygame.mixer.Sound('assets/sounds/coin_2.mp3')
         self.coin_sfx.set_volume(coin_volume)
+
+        # neat
 
     def setup_level(self):
         # Function that imports the game map
