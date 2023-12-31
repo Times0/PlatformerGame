@@ -42,7 +42,7 @@ class LevelUI:
 
         win.blit(self.coin_image, (5, 10 + TILE_SIZE))
 
-        text = '× ' + str(nb_coin)
+        text = f'× {nb_coin}/{COIN_REQUIRED}'  # MODIFIED HERE
         text_surface = self.font.render(text, False, (255, 196, 56))
         win.blit(text_surface, (TILE_SIZE, TILE_SIZE + 15))
 
