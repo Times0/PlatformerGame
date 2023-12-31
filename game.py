@@ -69,7 +69,7 @@ class Game:
         clock = pygame.time.Clock()
         while self.game_is_on:
             dt = clock.tick(FPS) / 1000  # Calculate time passed since the last frame
-            print(f"FPS: {clock.get_fps()}")
+            # print(f"FPS: {clock.get_fps()}")
             dt = min(dt, 0.1)  # Cap the maximum time passed to 0.1 seconds to avoid crash with slow pc
             self.handle_events()  # Handle game events
             self.update(dt)  # Update the game state
@@ -81,10 +81,7 @@ class Game:
             if event.type == QUIT:
                 self.game_is_on = False
 
-        # Delegate handling events based on the game state
-        if self.game_state == GameState.LEVEL:
-            self.level.handle_events(events)
-        elif self.game_state == GameState.MENU:
+        if self.game_state == GameState.MENU:
             self.menu.handle_events(events)
         elif self.game_state == GameState.WIN:
             self.win_screen.handle_events(events)
@@ -92,13 +89,11 @@ class Game:
             self.lose_screen.handle_events(events)
 
     def update(self, dt):
-        # Delegate updating based on the game state
         if self.game_state == GameState.LEVEL:
             self.level.update(dt)
 
     def draw(self, win):
         # Draw the game on the window based on the game state
-
         if self.game_state == GameState.LEVEL:
             self.level.draw(win)
         elif self.game_state == GameState.MENU:

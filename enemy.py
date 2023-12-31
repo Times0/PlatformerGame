@@ -1,5 +1,7 @@
 # Import necessary modules and constants
 from math import floor, sin
+from typing import Optional
+
 import pygame
 from constants import *
 from tile import Tile
@@ -9,28 +11,27 @@ from tile import Tile
 class Enemy(Tile):
     def __init__(self, x, y, image):
         super().__init__(x, y, image)
-
         # Initialize enemy properties
-        self.speed = 3
-        self.horizontal_movement = self.speed
+        self.speed: Optional[int] = None
+        self.horizontal_movement = 0
         self.facing_right = True
         self.status = 'idle'
         self.animation_sprites = {'idle': [], 'run': [], 'hurt': []}
         self.frame_index = 0
-        self.animation_speed = 0.15
+        self.animation_speed = 10
 
         # Sound effects
         self.explosion_sfx = pygame.mixer.Sound('assets/sounds/Explosion.wav')
         self.explosion_sfx.set_volume(SFX_VOLUME)
 
-    def animate(self):
+    def animate(self, dt):
         # Function to manage the enemy's displayed image based on its state and animation progress
 
         # Get the current animation state
         current_animation = self.animation_sprites[self.status]
 
         # Update the animation frame index
-        self.frame_index += self.animation_speed
+        self.frame_index += self.animation_speed * dt
         if self.frame_index >= len(current_animation):
             self.frame_index = 0
             if self.status == 'hurt':
@@ -57,9 +58,8 @@ class Enemy(Tile):
                 self.status = 'run'
                 self.facing_right = False
 
-    def move(self):
-        # Update the enemy's position based on its horizontal movement
-        self.rect.x += self.horizontal_movement
+    def move(self, dt):
+        self.rect.x += self.horizontal_movement * dt
 
     def die(self):
         # Function to handle the enemy's death
@@ -68,11 +68,11 @@ class Enemy(Tile):
         self.explosion_sfx.play()
         self.frame_index = 2
 
-    def update(self):
+    def update(self, dt):
         # Update the enemy's status, movement, and animation
         self.get_status()
-        self.move()
-        self.animate()
+        self.move(dt)
+        self.animate(dt)
 
 
 # Define a subclass of Enemy for Goomba enemies
@@ -82,9 +82,10 @@ class Goomba(Enemy):
 
         # Customize Goomba-specific properties and load its animation sprites
         self.status = 'idle'
+        self.speed = 200
+        self.horizontal_movement = self.speed
         self.animation_sprites = {'idle': [], 'run': [], 'hurt': []}
         self.frame_index = 0
-        self.animation_speed = 0.15
         self.load_sprites()
         self.image = self.animation_sprites[self.status][0]
 
@@ -121,15 +122,12 @@ class Goomba(Enemy):
 class Bee(Enemy):
     def __init__(self, x, y, image):
         super().__init__(x, y, image)
-
-        # Customize Bee-specific properties and load its animation sprites
-        self.speed = 1
+        self.speed = 250
         self.horizontal_movement = self.speed
         self._y = y * TILE_SIZE
         self.status = 'run'
         self.animation_sprites = {'run': [], 'hurt': []}
         self.frame_index = 0
-        self.animation_speed = 0.15
         self.load_sprites()
         self.image = self.animation_sprites[self.status][0]
 

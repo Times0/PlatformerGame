@@ -143,8 +143,7 @@ class Level:
             x_offset = self.player.horizontal_movement * dt
             self.player.rect.x += x_offset
 
-        collidable_groups = self.terrain
-        collision = pygame.sprite.spritecollide(self.player, collidable_groups.sprites(), False)
+        collision = pygame.sprite.spritecollide(self.player, self.terrain, False)
 
         for tile in collision:
 
@@ -162,8 +161,7 @@ class Level:
         y_offset = self.player.vertical_movement * dt
         self.player.rect.y += y_offset
 
-        collidable_groups = self.terrain
-        collision = pygame.sprite.spritecollide(self.player, collidable_groups.sprites(), False)
+        collision = pygame.sprite.spritecollide(self.player, self.terrain, False)
 
         for tile in collision:
 
@@ -178,13 +176,13 @@ class Level:
                 self.player.rect.top = tile.rect.bottom
                 self.player.vertical_movement = 0
 
-        if self.player.vertical_movement > 0:
-            self.player.on_ground = False
+        # if self.player.vertical_movement > 0:
+        #     self.player.on_ground = False
 
     def check_coin_collision(self):
         # Function to collect coins when the player touches them
 
-        collision = pygame.sprite.spritecollide(self.player, self.coins.sprites(), False)
+        collision = pygame.sprite.spritecollide(self.player, self.coins, False)
 
         if collision:
             for coin in collision:
@@ -198,7 +196,7 @@ class Level:
         for enemy in self.enemies.sprites():
 
             # Collision with enemy boundaries to determine when they turn
-            collision = pygame.sprite.spritecollide(enemy, self.enemy_boundaries.sprites(), False)
+            collision = pygame.sprite.spritecollide(enemy, self.enemy_boundaries, False)
 
             if collision:
                 for tile in collision:
@@ -290,10 +288,8 @@ class Level:
 
         # Indicator to avoid moving the player if we are moving all other objects
         self.scroll = False
-
         if self.player.rect.right > WIDTH / 2:  # If the player is on the right side of the screen
             if self.player.horizontal_movement > 0:  # If the player is moving to the right
-
                 # Move all sprites to the left
                 offset = self.player.horizontal_movement * dt
                 for sprite_group in self.sprite_groups:
@@ -303,19 +299,12 @@ class Level:
 
         elif self.player.rect.left < WIDTH / 4:  # If the player is on the left side of the screen
             if self.player.horizontal_movement < 0:  # If the player is moving to the left
-
                 # Move all sprites to the left
                 offset = self.player.horizontal_movement * dt
                 for sprite_group in self.sprite_groups:
                     for sprite in sprite_group:
                         sprite.rect.x -= offset
                         self.scroll = True
-
-    def handle_events(self, events):
-        """Player's inputs are actually handled in the update function because we are not looking for key presses but
-        for key states.
-        """
-        pass
 
     def update(self, dt):
         # Main function that runs the game within the levels
@@ -325,7 +314,7 @@ class Level:
         self.check_finish()
 
         # Update the enemies:
-        self.enemies.update()
+        self.enemies.update(dt)
         self.check_enemy_collision()
 
         # Camera scroll:

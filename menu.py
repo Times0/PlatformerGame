@@ -90,14 +90,14 @@ class Menu:
         return surface
 
     def handle_events(self, events):
-        # Handle user input events, such as mouse clicks and keyboard/controller input.
-
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 # Start the selected level if a button is clicked.
                 for button in self.buttons:
                     if button.on_mouse_clicked(event):
                         self.create_level(int(button.text))
+                        # ignore other events
+                        return
 
             elif event.type == pygame.MOUSEMOTION:
                 # Change the button's color when the mouse hovers over it.
@@ -126,12 +126,7 @@ class Menu:
                 elif event.key == pygame.K_SPACE:
                     # Start the currently selected level when the space key is pressed.
                     self.create_level(self.current_level)
-
-            elif event.type == pygame.JOYBUTTONDOWN:
-                if event.button == 0:
-                    # Start the currently selected level when the first controller button is pressed.
-
-                    self.create_level(self.current_level)
+                    return
 
     def draw(self, win):
         # Draw the menu on the game window.

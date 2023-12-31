@@ -68,19 +68,18 @@ class Player(pygame.sprite.Sprite):
             elif key == 'run':
                 y = 84
                 nb_sprite = 4
-
+            else:
+                raise Exception('Invalid animation key')
             for i in range(nb_sprite):
                 surface = pygame.Surface((self.width, self.height)).convert_alpha()
                 surface.set_colorkey((0, 0, 0))
                 surface.blit(sprite_sheet, (0, 0),
                              (i * 16 * self.resize_factor, y * self.resize_factor, 16 * self.resize_factor,
                               28 * self.resize_factor))
-
                 self.animation_sprites[key].append(surface)
 
     def animate(self, dt):
         # Function to handle the player's image to display based on the player's state and animation progress
-
         # Player's state:
         current_animation = self.animation_sprites[self.status]
 
@@ -94,7 +93,7 @@ class Player(pygame.sprite.Sprite):
 
         # Flip the image based on the player's direction
         if not self.facing_right:
-            image = pygame.transform.flip(image, True, False).convert_alpha()
+            image = pygame.transform.flip(image, True, False)
 
         # Blink when the player is invincible
         if self.invincible:
@@ -139,7 +138,6 @@ class Player(pygame.sprite.Sprite):
 
     def jump(self):
         # Function to make the player jump
-
         self.vertical_movement -= self.jump_power
         self.on_ground = False
         self.jump_sfx.play()
