@@ -7,9 +7,11 @@ from game import Game
 
 
 def main(genomes, config):
+    pygame.init()
     win = pygame.display.set_mode((WIDTH, HEIGHT))
     game = Game(win)
     game.init_bot(genomes=genomes, config=config)
+    game.run()
 
 
 def run():
@@ -21,3 +23,7 @@ def run():
     stats = neat.StatisticsReporter()
     population.add_reporter(stats)
     winner = population.run(main)
+
+
+if __name__ == '__main__':
+    run()

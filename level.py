@@ -1,5 +1,6 @@
 import os
 
+import neat
 import pygame
 from pytmx.util_pygame import load_pygame
 
@@ -10,9 +11,8 @@ from tile import Tile, AnimatedTile
 from ui import LevelUI
 
 
-
 class Level:
-    def __init__(self, current_level, show_menu, show_gameover):
+    def __init__(self, current_level, show_menu, show_gameover, genome=None, config=None):
         self.current_level: int = current_level
         self.show_menu = show_menu
         self.show_gameover = show_gameover
@@ -22,7 +22,11 @@ class Level:
         self.nb_coins = 0
 
         # Player setup
-        self.player: Player = Player()
+        self.players: list[Player] = []
+        for _, genome in genome:
+            net = neat.nn.FeedForwardNetwork.create(genome, config)
+            self.players.append(Player(net, genome))
+
         self.scroll = False
         self.nb_goomba = 0
         self.nb_bee = 0
@@ -31,7 +35,6 @@ class Level:
         # Level setup
         self.sprite_groups = []
         self.setup_level()
-        self.center_camera()
 
         # Sound effects (SFX)
         coin_volume = 2 * SFX_VOLUME
@@ -67,7 +70,8 @@ class Level:
         for x, y, surface in layer.tiles():
             player_spawn_x = x * TILE_SIZE
             player_spawn_y = (y + 1) * TILE_SIZE
-            self.player.rect.bottomleft = (player_spawn_x, player_spawn_y)
+            for player in self.players:
+                player.rect.bottomleft = (player_spawn_x, player_spawn_y)
 
         # Enemies
         layer = level_data.get_layer_by_name('Enemies')
@@ -140,47 +144,41 @@ class Level:
         return sprite_group
 
     def horizontal_collision(self, dt):
-
         # Apply the player's horizontal movement:
-        if not self.scroll:  # If the camera has moved all the sprites, no need to move the player
-            x_offset = self.player.horizontal_movement * dt
-            self.player.rect.x += x_offset
+        # if not self.scroll:  # If the camera has moved all the sprites, no need to move the player
+        #     x_offset = self.player.horizontal_movement * dt
+        #     self.player.rect.x += x_offset
 
-        collision = pygame.sprite.spritecollide(self.player, self.terrain, False)
+        for player in self.players:
+            collision = pygame.sprite.spritecollide(player, self.terrain, False)
 
-        for tile in collision:
+            for tile in collision:
 
-            # Collisions on the right of the player
-            if self.player.horizontal_movement > 0:
-                self.player.rect.right = tile.rect.left
+                # Collisions on the right of the player
+                if player.horizontal_movement > 0:
+                    player.rect.right = tile.rect.left
 
-            # Collisions on the left of the player
-            elif self.player.horizontal_movement < 0:
-                self.player.rect.left = tile.rect.right
+                # Collisions on the left of the player
+                elif player.horizontal_movement < 0:
+                    player.rect.left = tile.rect.right
 
     def vertical_collision(self, dt):
         # Apply the player's vertical movement:
+        for player in self.players:
+            y_offset = player.vertical_movement * dt
+            player.rect.y += y_offset
+            collision = pygame.sprite.spritecollide(player, self.terrain, False)
+            for tile in collision:
+                # Collisions below the player
+                if player.vertical_movement > 0:
+                    player.rect.bottom = tile.rect.top
+                    player.vertical_movement = 0
+                    player.on_ground = True
 
-        y_offset = self.player.vertical_movement * dt
-        self.player.rect.y += y_offset
-
-        collision = pygame.sprite.spritecollide(self.player, self.terrain, False)
-
-        for tile in collision:
-
-            # Collisions below the player
-            if self.player.vertical_movement > 0:
-                self.player.rect.bottom = tile.rect.top
-                self.player.vertical_movement = 0
-                self.player.on_ground = True
-
-            # Collisions above the player
-            elif self.player.vertical_movement < 0:
-                self.player.rect.top = tile.rect.bottom
-                self.player.vertical_movement = 0
-
-        # if self.player.vertical_movement > 0:
-        #     self.player.on_ground = False
+                # Collisions above the player
+                elif player.vertical_movement < 0:
+                    player.rect.top = tile.rect.bottom
+                    player.vertical_movement = 0
 
     def check_coin_collision(self):
         # Function to collect coins when the player touches them
@@ -314,19 +312,40 @@ class Level:
                         sprite.rect.x -= offset
                         self.scroll = True
 
+    def move_camera(self):
+        pressed = pygame.key.get_pressed()
+        offset = (0, 0)
+        if pressed[pygame.K_i]:
+            offset = (10, 0)
+        elif pressed[pygame.K_o]:
+            offset = (-10, 0)
+
+        for sprite_group in self.sprite_groups:
+            for sprite in sprite_group:
+                sprite.rect.x += offset[0]
+                sprite.rect.y += offset[1]
+        for player in self.players:
+            player.rect.x += offset[0]
+            player.rect.y += offset[1]
+
     def update(self, dt):
         # Main function that runs the game within the levels
         # Update the player:
-        self.player.update(dt)
-        self.check_coin_collision()
-        self.check_finish()
+
+        # camera movements
+        self.move_camera()
+
+        for player in self.players:
+            player.update(dt)
+        # self.check_coin_collision()
+        # self.check_finish()
 
         # Update the enemies:
         self.enemies.update(dt)
-        self.check_enemy_collision()
+        # self.check_enemy_collision()
 
         # Camera scroll:
-        self.camera_scroll(dt)
+        # self.camera_scroll(dt)
 
         # Player collisions
         self.horizontal_collision(dt)
@@ -336,7 +355,7 @@ class Level:
         self.surface_water.update()
         self.deep_water.update()
 
-        self.check_player_death()
+        # self.check_player_death()
 
     def draw(self, win):
         self.win = win
@@ -346,7 +365,10 @@ class Level:
         self.decoration.draw(win)
         self.terrain.draw(win)
         self.coins.draw(win)
-        self.player.draw(win)
+
+        for player in self.players:
+            player.draw(win)
+
         self.enemies.draw(win)
         self.deep_water.draw(win)
         self.foreground.draw(win)
@@ -355,6 +377,6 @@ class Level:
         self.ui.draw(win, nb_coins=self.nb_coins,
                      nb_goomba=self.nb_goomba,
                      nb_bee=self.nb_bee,
-                     health=self.player.current_lives)
+                     health=3)
 
         pygame.display.flip()

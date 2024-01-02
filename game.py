@@ -64,7 +64,7 @@ class Game:
         self.win_music.stop()
         self.menu_music.stop()
         self.level_music.play(loops=-1)
-        self.level = Level(current_level, self.show_menu, self.show_game_over)
+        self.level = Level(current_level, self.show_menu, self.show_game_over, self.genomes, self.config)
         self.game_state = GameState.LEVEL
 
     def run(self):

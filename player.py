@@ -3,14 +3,16 @@ from random import randint
 
 import pygame
 
+import constants
 from constants import *
 
 
 class Player(pygame.sprite.Sprite):
 
-    def __init__(self):
+    def __init__(self, net, genome):
         super().__init__()
-
+        self.net = net
+        self.genome = genome
         # Player's main characteristics
         self.lives = 3
         self.current_lives = self.lives
@@ -112,18 +114,18 @@ class Player(pygame.sprite.Sprite):
 
         # Keyboard actions
         keys = pygame.key.get_pressed()
+        if constants.HUMAN_PLAYING:
+            if keys[pygame.K_RIGHT] or keys[pygame.K_a]:
+                self.horizontal_movement += self.speed
+                self.facing_right = True
 
-        if keys[pygame.K_RIGHT] or keys[pygame.K_a]:
-            self.horizontal_movement += self.speed
-            self.facing_right = True
+            if keys[pygame.K_LEFT] or keys[pygame.K_d]:
+                self.horizontal_movement -= self.speed
+                self.facing_right = False
 
-        if keys[pygame.K_LEFT] or keys[pygame.K_d]:
-            self.horizontal_movement -= self.speed
-            self.facing_right = False
-
-        if keys[pygame.K_SPACE]:
-            if self.on_ground:
-                self.jump()
+            if keys[pygame.K_SPACE]:
+                if self.on_ground:
+                    self.jump()
 
     def get_status(self):
         # Function to change the player's state for animations (idle, running, jumping...)
