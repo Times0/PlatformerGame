@@ -195,16 +195,10 @@ class Level:
                     self.show_gameover(self.current_level, win=True, nb_coin=self.nb_coins)
 
     def check_enemy_collision(self):
-        # Function to check enemy collisions with their boundaries and the player
-
         for enemy in self.enemies.sprites():
-
-            # Collision with enemy boundaries to determine when they turn
             collision = pygame.sprite.spritecollide(enemy, self.enemy_boundaries, False)
-
             if collision:
                 for tile in collision:
-
                     # Collisions on the right of the enemy
                     if enemy.horizontal_movement > 0:
                         enemy.rect.right = tile.rect.left
@@ -215,6 +209,8 @@ class Level:
                         enemy.rect.left = tile.rect.right
                         enemy.horizontal_movement = enemy.speed
 
+    def check_enemy_collision_with_player(self):
+        for enemy in self.enemies.sprites():
             # Collision between the enemy and the player
             collision = enemy.rect.colliderect(self.player.rect)
 
@@ -233,8 +229,6 @@ class Level:
                     else:
                         pass
 
-                elif self.player.rect.bottom < enemy.rect.centery and self.player.vertical_movement < 0:
-                    pass
 
                 # If the player is hit by the enemy and is not invincible
                 elif not self.player.invincible:
@@ -314,18 +308,19 @@ class Level:
                         self.scroll = True
 
     def camera_events(self):
+        STRENGTH = 20
         pressed = pygame.key.get_pressed()
         offset = (0, 0)
         if pressed[pygame.K_i]:
-            offset = (10, 0)
+            offset = (STRENGTH, 0)
         elif pressed[pygame.K_o]:
-            offset = (-10, 0)
+            offset = (-STRENGTH, 0)
 
         self.move_camera(offset)
 
     def move_camera(self, offset):
-        for sprite_group in self.sprite_groups:
-            for sprite in sprite_group:
+        for group in self.sprite_groups:
+            for sprite in group:
                 sprite.rect.x += offset[0]
                 sprite.rect.y += offset[1]
         for player in self.players:
@@ -334,10 +329,6 @@ class Level:
         self.spawn_x += offset[0]
 
     def update(self, dt):
-        # Main function that runs the game within the levels
-        # Update the player:
-
-        # camera movements
         self.camera_events()
 
         for player in self.players:
@@ -349,14 +340,9 @@ class Level:
                 player.genome.fitness += 1
         # self.check_coin_collision()
         # self.check_finish()
-
         # Update the enemies:
         self.enemies.update(dt)
-        # self.check_enemy_collision()
-
-        # Camera scroll:
-        # self.camera_scroll(dt)
-
+        self.check_enemy_collision()
         # Player collisions
         self.horizontal_collision(dt)
         self.vertical_collision(dt)

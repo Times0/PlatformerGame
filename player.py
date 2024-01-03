@@ -1,20 +1,21 @@
 from math import floor
 from random import randint
+from typing import Optional
 
 import neat
 import pygame
 
 import constants
-from constants import *
+from constants import SFX_VOLUME
 
 
 class Player(pygame.sprite.Sprite):
 
     def __init__(self, net, genome):
         super().__init__()
+        self.points: list[list[tuple[int, int]]] = []
         self.font = pygame.font.SysFont('Arial', 20)
         self.best_distance: int = 0
-        self.terrains = None
         self.net = net
         self.genome: neat.DefaultGenome = genome
         # Player's main characteristics
@@ -56,9 +57,10 @@ class Player(pygame.sprite.Sprite):
         self.hurt_sfx.set_volume(hurt_volume)
 
         # AI vision
-        self.max_vision_distance = 200
-        self.vision = [0, 0, 0, 0, 0, 0]  # 0 = empty, 1 = block, 2 = coin, 3 = enemy
-        self.line_spacing = 40
+        self.max_vision_distance = 400
+        self.vision = [0, 0, 0, 0, 0, 0, 0, 0]
+        self.ends = [None] * len(self.vision)
+        self.line_spacing = 60
 
     def load_sprites(self):
         # Function to retrieve player's animation images from the sprite sheet
@@ -116,12 +118,7 @@ class Player(pygame.sprite.Sprite):
         self.image = image
 
     def get_inputs(self):
-        # Function to handle player's actions
-
-        # Reset horizontal speed
         self.horizontal_movement = 0
-
-        # Keyboard actions
         keys = pygame.key.get_pressed()
         if constants.HUMAN_PLAYING:
             if keys[pygame.K_RIGHT] or keys[pygame.K_a]:
@@ -133,24 +130,31 @@ class Player(pygame.sprite.Sprite):
                 self.facing_right = False
 
             if keys[pygame.K_SPACE]:
-                if self.on_ground:
-                    self.jump()
+                self.jump()
         else:
-            inputs = self.get_ai_vision_inputs() + [self.on_ground] + [self.facing_right]
-            inputs = [e * 100 for e in inputs]
+            inputs = self.get_ai_vision_inputs()
             output = self.net.activate(inputs)
-            if output[0] > 0.5:
+            # Bias for the right direction since the end of the level is on the right
+            if output[0] > 0.2:
                 self.horizontal_movement += self.speed
                 self.facing_right = True
-            if output[1] > 0.5:
+            if output[1] > 0.8:
                 self.horizontal_movement -= self.speed
                 self.facing_right = False
             if output[2] > 0.5:
-                if self.on_ground:
-                    self.jump()
+                self.jump()
 
     def get_ai_vision_inputs(self):
-        return self.vision
+        """Return the distance to the closest object in each direction"""
+        res = []
+        for i in range(len(self.vision)):
+            if self.vision[i] == 0:
+                res.append(0)
+            else:
+                distance = self.ends[i][0] - self.rect.centerx
+                score = 100 / distance if distance > 0 else 0
+                res.append(score)
+        return res
 
     def get_status(self):
         if self.on_ground:
@@ -162,9 +166,10 @@ class Player(pygame.sprite.Sprite):
             self.status = 'jump'
 
     def jump(self):
-        self.vertical_movement -= self.jump_power
-        self.on_ground = False
-        self.jump_sfx.play()
+        if self.on_ground:
+            self.vertical_movement -= self.jump_power
+            self.on_ground = False
+            self.jump_sfx.play()
 
     def apply_gravity(self, dt):
         if not self.first_run:
@@ -193,7 +198,43 @@ class Player(pygame.sprite.Sprite):
         self.animate(dt)
         # Collisions are handled in the Level class to have access to the terrain blocks
 
-    def draw(self, win, draw_vision=True):
+    def vision_start_point(self):
+        return self.rect.centerx, self.rect.centery - 25
+
+    def update_vision(self, terrain: pygame.sprite.Group):
+        self.vision = [0] * len(self.vision)
+        self.ends: list[Optional[tuple[int, int]]] = [None] * len(self.vision)
+        self.points: list[list[tuple[int, int]]] = [[] for _ in range(len(self.vision))]
+        # collision between line and tile
+        self.interesting_rect = self.rect.copy().inflate(self.max_vision_distance * 1.5,
+                                                         self.line_spacing * len(self.vision)).move(200, 0)
+
+        interesting_tiles = [tile for tile in terrain if self.interesting_rect.colliderect(tile.rect)]
+        interesting_tiles.sort(key=lambda tile: tile.rect.x)
+
+        n = len(self.vision)
+        m = 20
+        start = self.vision_start_point()
+        for i in range(n):
+            flag = False
+            end = (start[0] + self.max_vision_distance,
+                   start[1] - (n // 2 - i) * self.line_spacing)
+            for j in range(1, m + 1):
+                x = int(start[0] + j * (end[0] - start[0]) / m)
+                y = int(start[1] + j * (end[1] - start[1]) / m)
+                point = (x, y)
+                self.points[i].append(point)
+
+                for tile in interesting_tiles:
+                    if tile.rect.collidepoint(point):
+                        self.vision[i] = 1
+                        self.ends[i] = point
+                        flag = True
+                        break
+                if flag:
+                    break
+
+    def draw(self, win, draw_vision=False):
         win.blit(self.image, self.rect)
 
         # draw fitness on top
@@ -205,6 +246,8 @@ class Player(pygame.sprite.Sprite):
             self.draw_vision(win)
 
     def draw_vision(self, win):
+        if hasattr(self, "interesting_rect"):
+            pygame.draw.rect(win, (0, 0, 0), self.interesting_rect, 1)
         for i in range(n := len(self.vision)):
             if self.vision[i] == 1:
                 color = (255, 0, 0)
@@ -214,39 +257,12 @@ class Player(pygame.sprite.Sprite):
                 color = (0, 255, 0)
             else:
                 color = (0, 0, 0)
-            pygame.draw.aaline(win, color,
-                               self.vision_start_point(),
-                               (self.vision_start_point()[0] + self.max_vision_distance,
-                                self.vision_start_point()[1] - (n // 2 - i) * self.line_spacing))
 
-    def vision_start_point(self):
-        return self.rect.centerx, self.rect.centery - 25
-
-    def update_vision(self, terrain: pygame.sprite.Group):
-        self.vision = [0, 0, 0, 0, 0, 0]
-        if not self.terrains:
-            self.terrains = sorted(terrain.sprites(), key=lambda t: t.rect.x)
-        # collision between line and tile
-        for tile in self.terrains:
-            if tile.rect.x > self.rect.x + self.max_vision_distance:
-                break
-            if tile.rect.x + tile.rect.width < self.rect.x - self.max_vision_distance:
-                continue
-            if tile.rect.y + tile.rect.height < self.rect.y - self.max_vision_distance:
-                continue
-            if tile.rect.y > self.rect.y + self.max_vision_distance:
-                continue
-
-            # collision between line and tile
-            start_point = self.vision_start_point()
-            for i in range(n := len(self.vision)):
-                end_point = (start_point[0] + self.max_vision_distance,
-                             start_point[1] - (n // 2 - i) * self.line_spacing)
-                # extract m points from line using linear interpolation
-                m = 10
-                for j in range(m + 1):
-                    x = start_point[0] + (end_point[0] - start_point[0]) * j / m
-                    y = start_point[1] + (end_point[1] - start_point[1]) * j / m
-                    if tile.rect.collidepoint(x, y):
-                        self.vision[i] = 1
-                        break
+            if self.ends[i]:
+                end = self.ends[i]
+            else:
+                end = (self.vision_start_point()[0] + self.max_vision_distance,
+                       self.vision_start_point()[1] - (n // 2 - i) * self.line_spacing)
+            pygame.draw.aaline(win, color, self.vision_start_point(), end)
+            for point in self.points[i]:
+                pygame.draw.circle(win, color, (int(point[0]), int(point[1])), 2)
