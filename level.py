@@ -13,6 +13,7 @@ from ui import LevelUI
 
 class Level:
     def __init__(self, current_level, show_menu, show_gameover, genome=None, config=None):
+        self.max_distance = float('-inf')
         self.current_level: int = current_level
         self.show_menu = show_menu
         self.show_gameover = show_gameover
@@ -25,7 +26,9 @@ class Level:
         self.players: list[Player] = []
         for _, genome in genome:
             net = neat.nn.FeedForwardNetwork.create(genome, config)
-            self.players.append(Player(net, genome))
+            p = Player(net, genome)
+            p.genome.fitness = 0
+            self.players.append(p)
 
         self.scroll = False
         self.nb_goomba = 0
@@ -33,7 +36,7 @@ class Level:
         self.nb_isib = 0
 
         # Level setup
-        self.sprite_groups = []
+        self.sprite_groups: list[pygame.sprite.Group] = []
         self.setup_level()
 
         # Sound effects (SFX)
@@ -41,7 +44,7 @@ class Level:
         self.coin_sfx = pygame.mixer.Sound('assets/sounds/coin_2.mp3')
         self.coin_sfx.set_volume(coin_volume)
 
-        # neat
+        self.move_camera((-800, 0))
 
     def setup_level(self):
         # Function that imports the game map
@@ -69,6 +72,7 @@ class Level:
         layer = level_data.get_layer_by_name('Spawn')
         for x, y, surface in layer.tiles():
             player_spawn_x = x * TILE_SIZE
+            self.spawn_x = player_spawn_x
             player_spawn_y = (y + 1) * TILE_SIZE
             for player in self.players:
                 player.rect.bottomleft = (player_spawn_x, player_spawn_y)
@@ -144,17 +148,11 @@ class Level:
         return sprite_group
 
     def horizontal_collision(self, dt):
-        # Apply the player's horizontal movement:
-        # if not self.scroll:  # If the camera has moved all the sprites, no need to move the player
-        #     x_offset = self.player.horizontal_movement * dt
-        #     self.player.rect.x += x_offset
-
         for player in self.players:
+            player.rect.x += player.horizontal_movement * dt
             collision = pygame.sprite.spritecollide(player, self.terrain, False)
 
             for tile in collision:
-
-                # Collisions on the right of the player
                 if player.horizontal_movement > 0:
                     player.rect.right = tile.rect.left
 
@@ -252,8 +250,11 @@ class Level:
             self.show_gameover(self.current_level, win=True, nb_coin=self.nb_coins)
 
     def check_player_death(self):
-        if self.player.rect.top > HEIGHT:
-            self.show_gameover(self.current_level)
+        for player in self.players:
+            if player.rect.top > HEIGHT:
+                player.genome.fitness -= 500
+                # remove player
+                self.players.remove(player)
 
     def reset_player(self):
         # Reset the level and the player
@@ -312,7 +313,7 @@ class Level:
                         sprite.rect.x -= offset
                         self.scroll = True
 
-    def move_camera(self):
+    def camera_events(self):
         pressed = pygame.key.get_pressed()
         offset = (0, 0)
         if pressed[pygame.K_i]:
@@ -320,6 +321,9 @@ class Level:
         elif pressed[pygame.K_o]:
             offset = (-10, 0)
 
+        self.move_camera(offset)
+
+    def move_camera(self, offset):
         for sprite_group in self.sprite_groups:
             for sprite in sprite_group:
                 sprite.rect.x += offset[0]
@@ -327,16 +331,22 @@ class Level:
         for player in self.players:
             player.rect.x += offset[0]
             player.rect.y += offset[1]
+        self.spawn_x += offset[0]
 
     def update(self, dt):
         # Main function that runs the game within the levels
         # Update the player:
 
         # camera movements
-        self.move_camera()
+        self.camera_events()
 
         for player in self.players:
+            player.update_vision(self.terrain)
             player.update(dt)
+            distance_from_start = player.rect.x - self.spawn_x
+            if distance_from_start > player.best_distance:
+                player.best_distance = distance_from_start
+                player.genome.fitness += 1
         # self.check_coin_collision()
         # self.check_finish()
 
@@ -355,7 +365,7 @@ class Level:
         self.surface_water.update()
         self.deep_water.update()
 
-        # self.check_player_death()
+        self.check_player_death()
 
     def draw(self, win):
         self.win = win

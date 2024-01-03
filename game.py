@@ -93,6 +93,10 @@ class Game:
     def update(self, dt):
         if self.game_state == GameState.LEVEL:
             self.level.update(dt)
+            if len(self.level.players) == 0:
+                self.game_is_on = False
+                print("Simulation killed because all players died")
+
 
     def draw(self, win):
         # Draw the game on the window based on the game state
