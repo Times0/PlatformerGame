@@ -234,7 +234,7 @@ class Player(pygame.sprite.Sprite):
                 if flag:
                     break
 
-    def draw(self, win, draw_vision=False):
+    def draw(self, win, draw_vision=True):
         win.blit(self.image, self.rect)
 
         # draw fitness on top
