@@ -1,5 +1,6 @@
 import os
 
+import neat
 import pygame
 from pytmx.util_pygame import load_pygame
 
@@ -11,7 +12,8 @@ from ui import LevelUI
 
 
 class Level:
-    def __init__(self, current_level, show_menu, show_gameover):
+    def __init__(self, current_level, show_menu, show_gameover, genome=None, config=None):
+        self.max_distance = float('-inf')
         self.current_level: int = current_level
         self.show_menu = show_menu
         self.show_gameover = show_gameover
@@ -21,21 +23,28 @@ class Level:
         self.nb_coins = 0
 
         # Player setup
-        self.player: Player = Player()
+        self.players: list[Player] = []
+        for _, genome in genome:
+            net = neat.nn.FeedForwardNetwork.create(genome, config)
+            p = Player(net, genome)
+            p.genome.fitness = 0
+            self.players.append(p)
+
         self.scroll = False
         self.nb_goomba = 0
         self.nb_bee = 0
         self.nb_isib = 0
 
         # Level setup
-        self.sprite_groups = []
+        self.sprite_groups: list[pygame.sprite.Group] = []
         self.setup_level()
-        self.center_camera()
 
         # Sound effects (SFX)
         coin_volume = 2 * SFX_VOLUME
         self.coin_sfx = pygame.mixer.Sound('assets/sounds/coin_2.mp3')
         self.coin_sfx.set_volume(coin_volume)
+
+        self.move_camera((-800, 0))
 
     def setup_level(self):
         # Function that imports the game map
@@ -63,8 +72,10 @@ class Level:
         layer = level_data.get_layer_by_name('Spawn')
         for x, y, surface in layer.tiles():
             player_spawn_x = x * TILE_SIZE
+            self.spawn_x = player_spawn_x
             player_spawn_y = (y + 1) * TILE_SIZE
-            self.player.rect.bottomleft = (player_spawn_x, player_spawn_y)
+            for player in self.players:
+                player.rect.bottomleft = (player_spawn_x, player_spawn_y)
 
         # Enemies
         layer = level_data.get_layer_by_name('Enemies')
@@ -137,47 +148,35 @@ class Level:
         return sprite_group
 
     def horizontal_collision(self, dt):
+        for player in self.players:
+            player.rect.x += player.horizontal_movement * dt
+            collision = pygame.sprite.spritecollide(player, self.terrain, False)
 
-        # Apply the player's horizontal movement:
-        if not self.scroll:  # If the camera has moved all the sprites, no need to move the player
-            x_offset = self.player.horizontal_movement * dt
-            self.player.rect.x += x_offset
+            for tile in collision:
+                if player.horizontal_movement > 0:
+                    player.rect.right = tile.rect.left
 
-        collision = pygame.sprite.spritecollide(self.player, self.terrain, False)
-
-        for tile in collision:
-
-            # Collisions on the right of the player
-            if self.player.horizontal_movement > 0:
-                self.player.rect.right = tile.rect.left
-
-            # Collisions on the left of the player
-            elif self.player.horizontal_movement < 0:
-                self.player.rect.left = tile.rect.right
+                # Collisions on the left of the player
+                elif player.horizontal_movement < 0:
+                    player.rect.left = tile.rect.right
 
     def vertical_collision(self, dt):
         # Apply the player's vertical movement:
+        for player in self.players:
+            y_offset = player.vertical_movement * dt
+            player.rect.y += y_offset
+            collision = pygame.sprite.spritecollide(player, self.terrain, False)
+            for tile in collision:
+                # Collisions below the player
+                if player.vertical_movement > 0:
+                    player.rect.bottom = tile.rect.top
+                    player.vertical_movement = 0
+                    player.on_ground = True
 
-        y_offset = self.player.vertical_movement * dt
-        self.player.rect.y += y_offset
-
-        collision = pygame.sprite.spritecollide(self.player, self.terrain, False)
-
-        for tile in collision:
-
-            # Collisions below the player
-            if self.player.vertical_movement > 0:
-                self.player.rect.bottom = tile.rect.top
-                self.player.vertical_movement = 0
-                self.player.on_ground = True
-
-            # Collisions above the player
-            elif self.player.vertical_movement < 0:
-                self.player.rect.top = tile.rect.bottom
-                self.player.vertical_movement = 0
-
-        # if self.player.vertical_movement > 0:
-        #     self.player.on_ground = False
+                # Collisions above the player
+                elif player.vertical_movement < 0:
+                    player.rect.top = tile.rect.bottom
+                    player.vertical_movement = 0
 
     def check_coin_collision(self):
         # Function to collect coins when the player touches them
@@ -196,16 +195,10 @@ class Level:
                     self.show_gameover(self.current_level, win=True, nb_coin=self.nb_coins)
 
     def check_enemy_collision(self):
-        # Function to check enemy collisions with their boundaries and the player
-
         for enemy in self.enemies.sprites():
-
-            # Collision with enemy boundaries to determine when they turn
             collision = pygame.sprite.spritecollide(enemy, self.enemy_boundaries, False)
-
             if collision:
                 for tile in collision:
-
                     # Collisions on the right of the enemy
                     if enemy.horizontal_movement > 0:
                         enemy.rect.right = tile.rect.left
@@ -216,6 +209,8 @@ class Level:
                         enemy.rect.left = tile.rect.right
                         enemy.horizontal_movement = enemy.speed
 
+    def check_enemy_collision_with_player(self):
+        for enemy in self.enemies.sprites():
             # Collision between the enemy and the player
             collision = enemy.rect.colliderect(self.player.rect)
 
@@ -234,8 +229,6 @@ class Level:
                     else:
                         pass
 
-                elif self.player.rect.bottom < enemy.rect.centery and self.player.vertical_movement < 0:
-                    pass
 
                 # If the player is hit by the enemy and is not invincible
                 elif not self.player.invincible:
@@ -251,8 +244,11 @@ class Level:
             self.show_gameover(self.current_level, win=True, nb_coin=self.nb_coins)
 
     def check_player_death(self):
-        if self.player.rect.top > HEIGHT:
-            self.show_gameover(self.current_level)
+        for player in self.players:
+            if player.rect.top > HEIGHT:
+                player.genome.fitness -= 500
+                # remove player
+                self.players.remove(player)
 
     def reset_player(self):
         # Reset the level and the player
@@ -311,20 +307,42 @@ class Level:
                         sprite.rect.x -= offset
                         self.scroll = True
 
-    def update(self, dt):
-        # Main function that runs the game within the levels
-        # Update the player:
-        self.player.update(dt)
-        self.check_coin_collision()
-        self.check_finish()
+    def camera_events(self):
+        STRENGTH = 20
+        pressed = pygame.key.get_pressed()
+        offset = (0, 0)
+        if pressed[pygame.K_i]:
+            offset = (STRENGTH, 0)
+        elif pressed[pygame.K_o]:
+            offset = (-STRENGTH, 0)
 
+        self.move_camera(offset)
+
+    def move_camera(self, offset):
+        for group in self.sprite_groups:
+            for sprite in group:
+                sprite.rect.x += offset[0]
+                sprite.rect.y += offset[1]
+        for player in self.players:
+            player.rect.x += offset[0]
+            player.rect.y += offset[1]
+        self.spawn_x += offset[0]
+
+    def update(self, dt):
+        self.camera_events()
+
+        for player in self.players:
+            player.update_vision(self.terrain)
+            player.update(dt)
+            distance_from_start = player.rect.x - self.spawn_x
+            if distance_from_start > player.best_distance:
+                player.best_distance = distance_from_start
+                player.genome.fitness += 1
+        # self.check_coin_collision()
+        # self.check_finish()
         # Update the enemies:
         self.enemies.update(dt)
         self.check_enemy_collision()
-
-        # Camera scroll:
-        self.camera_scroll(dt)
-
         # Player collisions
         self.horizontal_collision(dt)
         self.vertical_collision(dt)
@@ -343,7 +361,10 @@ class Level:
         self.decoration.draw(win)
         self.terrain.draw(win)
         self.coins.draw(win)
-        self.player.draw(win)
+
+        for player in self.players:
+            player.draw(win)
+
         self.enemies.draw(win)
         self.deep_water.draw(win)
         self.foreground.draw(win)
@@ -352,6 +373,6 @@ class Level:
         self.ui.draw(win, nb_coins=self.nb_coins,
                      nb_goomba=self.nb_goomba,
                      nb_bee=self.nb_bee,
-                     health=self.player.current_lives)
+                     health=3)
 
         pygame.display.flip()

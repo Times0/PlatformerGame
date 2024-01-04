@@ -1,17 +1,13 @@
 # Import necessary modules and classes
 import enum
-import time
 
 import pygame.sprite
-from pygame import Color
-from pygame import Rect
 from pygame.locals import *
 from constants import *
 from data_loader import get_player_data, update_player_data
 from gameover import VictoryScreen, DefeatScreen
 from level import Level
 from menu import Menu
-from player import Player
 
 # Define the path to the data file
 DATA_PATH = 'data/data.json'
@@ -27,6 +23,7 @@ class GameState(enum.Enum):
 # Define the Game class
 class Game:
     def __init__(self, win):
+        self.ai_playing = False
         self.win = win
         self.game_is_on = True  # This variable will be used to stop the game
 
@@ -56,13 +53,18 @@ class Game:
         self.win_screen = VictoryScreen(self.create_level, self.show_menu, self.next_level)
         self.lose_screen = DefeatScreen(self.create_level, self.show_menu)
 
+    def init_bot(self, genomes=None, config=None):
+        self.ai_playing = True
+        self.genomes = genomes
+        self.config = config
+
     def create_level(self, current_level):
         # Stop any playing music, play level music, and create a new level
         self.death_music.stop()
         self.win_music.stop()
         self.menu_music.stop()
         self.level_music.play(loops=-1)
-        self.level = Level(current_level, self.show_menu, self.show_game_over)
+        self.level = Level(current_level, self.show_menu, self.show_game_over, self.genomes, self.config)
         self.game_state = GameState.LEVEL
 
     def run(self):
@@ -91,6 +93,9 @@ class Game:
     def update(self, dt):
         if self.game_state == GameState.LEVEL:
             self.level.update(dt)
+            if len(self.level.players) == 0:
+                self.game_is_on = False
+                print("Simulation killed because all players died")
 
     def draw(self, win):
         # Draw the game on the window based on the game state

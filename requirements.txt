@@ -1,2 +1,3 @@
-pygame
-PyTMX
+pygame~=2.5.1
+PyTMX~=3.32
+neat

@@ -1,16 +1,23 @@
 from math import floor
 from random import randint
+from typing import Optional
 
+import neat
 import pygame
 
-from constants import *
+import constants
+from constants import SFX_VOLUME
 
 
 class Player(pygame.sprite.Sprite):
 
-    def __init__(self):
+    def __init__(self, net, genome):
         super().__init__()
-
+        self.points: list[list[tuple[int, int]]] = []
+        self.font = pygame.font.SysFont('Arial', 20)
+        self.best_distance: int = 0
+        self.net = net
+        self.genome: neat.DefaultGenome = genome
         # Player's main characteristics
         self.lives = 3
         self.current_lives = self.lives
@@ -48,6 +55,12 @@ class Player(pygame.sprite.Sprite):
         hurt_volume = 2 * SFX_VOLUME
         self.hurt_sfx = pygame.mixer.Sound('assets/sounds/Hurt.wav')
         self.hurt_sfx.set_volume(hurt_volume)
+
+        # AI vision
+        self.max_vision_distance = 400
+        self.vision = [0, 0, 0, 0, 0, 0, 0, 0]
+        self.ends = [None] * len(self.vision)
+        self.line_spacing = 60
 
     def load_sprites(self):
         # Function to retrieve player's animation images from the sprite sheet
@@ -105,29 +118,45 @@ class Player(pygame.sprite.Sprite):
         self.image = image
 
     def get_inputs(self):
-        # Function to handle player's actions
-
-        # Reset horizontal speed
         self.horizontal_movement = 0
-
-        # Keyboard actions
         keys = pygame.key.get_pressed()
+        if constants.HUMAN_PLAYING:
+            if keys[pygame.K_RIGHT] or keys[pygame.K_a]:
+                self.horizontal_movement += self.speed
+                self.facing_right = True
 
-        if keys[pygame.K_RIGHT] or keys[pygame.K_a]:
-            self.horizontal_movement += self.speed
-            self.facing_right = True
+            if keys[pygame.K_LEFT] or keys[pygame.K_d]:
+                self.horizontal_movement -= self.speed
+                self.facing_right = False
 
-        if keys[pygame.K_LEFT] or keys[pygame.K_d]:
-            self.horizontal_movement -= self.speed
-            self.facing_right = False
-
-        if keys[pygame.K_SPACE]:
-            if self.on_ground:
+            if keys[pygame.K_SPACE]:
+                self.jump()
+        else:
+            inputs = self.get_ai_vision_inputs()
+            output = self.net.activate(inputs)
+            # Bias for the right direction since the end of the level is on the right
+            if output[0] > 0.2:
+                self.horizontal_movement += self.speed
+                self.facing_right = True
+            if output[1] > 0.8:
+                self.horizontal_movement -= self.speed
+                self.facing_right = False
+            if output[2] > 0.5:
                 self.jump()
 
-    def get_status(self):
-        # Function to change the player's state for animations (idle, running, jumping...)
+    def get_ai_vision_inputs(self):
+        """Return the distance to the closest object in each direction"""
+        res = []
+        for i in range(len(self.vision)):
+            if self.vision[i] == 0:
+                res.append(0)
+            else:
+                distance = self.ends[i][0] - self.rect.centerx
+                score = 100 / distance if distance > 0 else 0
+                res.append(score)
+        return res
 
+    def get_status(self):
         if self.on_ground:
             if self.horizontal_movement == 0:
                 self.status = 'idle'
@@ -137,13 +166,12 @@ class Player(pygame.sprite.Sprite):
             self.status = 'jump'
 
     def jump(self):
-        # Function to make the player jump
-        self.vertical_movement -= self.jump_power
-        self.on_ground = False
-        self.jump_sfx.play()
+        if self.on_ground:
+            self.vertical_movement -= self.jump_power
+            self.on_ground = False
+            self.jump_sfx.play()
 
     def apply_gravity(self, dt):
-        # Function to add gravity to the player's vertical speed
         if not self.first_run:
             self.vertical_movement += self.gravity * dt
         else:
@@ -151,30 +179,90 @@ class Player(pygame.sprite.Sprite):
             self.first_run = False
 
     def check_invincibility(self):
-        # Check the invincibility timer
-
         if self.invincible:
             now = pygame.time.get_ticks()
             if now - self.invincibility_timer > self.invincibility_period:
                 self.invincible = False
 
     def take_damage(self):
-        # Make the player invincible for a certain period of time
         self.invincible = True
         self.invincibility_timer = pygame.time.get_ticks()
         self.hurt_sfx.play()
         self.current_lives -= 1
 
     def update(self, dt):
-        # Update the player
         self.get_inputs()
         self.apply_gravity(dt)
         self.check_invincibility()
         self.get_status()
         self.animate(dt)
-
         # Collisions are handled in the Level class to have access to the terrain blocks
 
-    def draw(self, win):
-        # Draw the player
+    def vision_start_point(self):
+        return self.rect.centerx, self.rect.centery - 25
+
+    def update_vision(self, terrain: pygame.sprite.Group):
+        self.vision = [0] * len(self.vision)
+        self.ends: list[Optional[tuple[int, int]]] = [None] * len(self.vision)
+        self.points: list[list[tuple[int, int]]] = [[] for _ in range(len(self.vision))]
+        # collision between line and tile
+        self.interesting_rect = self.rect.copy().inflate(self.max_vision_distance * 1.5,
+                                                         self.line_spacing * len(self.vision)).move(200, 0)
+
+        interesting_tiles = [tile for tile in terrain if self.interesting_rect.colliderect(tile.rect)]
+        interesting_tiles.sort(key=lambda tile: tile.rect.x)
+
+        n = len(self.vision)
+        m = 20
+        start = self.vision_start_point()
+        for i in range(n):
+            flag = False
+            end = (start[0] + self.max_vision_distance,
+                   start[1] - (n // 2 - i) * self.line_spacing)
+            for j in range(1, m + 1):
+                x = int(start[0] + j * (end[0] - start[0]) / m)
+                y = int(start[1] + j * (end[1] - start[1]) / m)
+                point = (x, y)
+                self.points[i].append(point)
+
+                for tile in interesting_tiles:
+                    if tile.rect.collidepoint(point):
+                        self.vision[i] = 1
+                        self.ends[i] = point
+                        flag = True
+                        break
+                if flag:
+                    break
+
+    def draw(self, win, draw_vision=True):
         win.blit(self.image, self.rect)
+
+        # draw fitness on top
+        pygame.draw.rect(win, (0, 0, 0), (self.rect.x, self.rect.y - 20, 100, 20))
+        text = self.font.render(f"Fitness: {self.genome.fitness}", True, (255, 255, 255))
+        win.blit(text, (self.rect.x, self.rect.y - 20))
+
+        if draw_vision:
+            self.draw_vision(win)
+
+    def draw_vision(self, win):
+        if hasattr(self, "interesting_rect"):
+            pygame.draw.rect(win, (0, 0, 0), self.interesting_rect, 1)
+        for i in range(n := len(self.vision)):
+            if self.vision[i] == 1:
+                color = (255, 0, 0)
+            elif self.vision[i] == 2:
+                color = (255, 255, 0)
+            elif self.vision[i] == 3:
+                color = (0, 255, 0)
+            else:
+                color = (0, 0, 0)
+
+            if self.ends[i]:
+                end = self.ends[i]
+            else:
+                end = (self.vision_start_point()[0] + self.max_vision_distance,
+                       self.vision_start_point()[1] - (n // 2 - i) * self.line_spacing)
+            pygame.draw.aaline(win, color, self.vision_start_point(), end)
+            for point in self.points[i]:
+                pygame.draw.circle(win, color, (int(point[0]), int(point[1])), 2)

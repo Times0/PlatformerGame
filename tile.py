@@ -37,7 +37,7 @@ class AnimatedTile(Tile):
     def load_sprites(self):
         sprite_sheet = pygame.image.load(self.path).convert_alpha()
         nb_sprites = int(sprite_sheet.get_width() / self.tile_width)
-        sprite_sheet = pygame.transform.scale_by(sprite_sheet, (self.resize_factor))
+        sprite_sheet = pygame.transform.scale_by(sprite_sheet, self.resize_factor)
 
         for x in range(nb_sprites):
             surface = pygame.Surface((self.width, self.width), pygame.SRCALPHA).convert_alpha()
