@@ -1,7 +1,7 @@
 # Description
 Platformer game
 
-![image](https://github.com/Times0/PlatformerGame/assets/45049767/9747e0cf-fd67-48d7-9bcd-ff13f53ca08e)
+[demoPlatformerAI.webm](https://github.com/Times0/PlatformerGame/assets/45049767/f32d47eb-b1bb-4026-b9a3-80bc2f9955f4)
 
 # Credit
 platformer made by hifumi
